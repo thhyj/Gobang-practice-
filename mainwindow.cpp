@@ -24,6 +24,7 @@ int over = 0;
 int end = 0;
 int Player1type = 1, Player2type = 1;
 extern int lastx, lasty;
+int Depth = 7; //搜索树深度
 
 void MainWindow::setPlayer1Bot() {
     Player1type = 0;
@@ -41,6 +42,18 @@ void MainWindow::setPlayer2Human() {
     Player2type = 1;
     game->setPlayer(1, Player2type);
 }
+void MainWindow::setDeep5() {
+    Depth = 5;
+}
+
+void MainWindow::setDeep7() {
+    Depth = 7;
+}
+
+void MainWindow::setDeep9() {
+    Depth = 9;
+}
+
 void MainWindow::withdraw() {
     int x, y;
     x = game->history.back().first;
@@ -62,7 +75,9 @@ MainWindow::MainWindow(QWidget *parent)
     QMenu *Player1Type = new QMenu("Player1 type", this);
     gameMenu->addMenu(Player1Type);
     QMenu *Player2Type = new QMenu("Player2 type", this);
+    QMenu *Deep = new QMenu("Deep", this);
     gameMenu->addMenu(Player2Type);
+    gameMenu->addMenu(Deep);
     QAction *setPlayer1Bot = new QAction("Bot", this);
     QAction *setPlayer1Human = new QAction("Human", this);
     connect(setPlayer1Bot, SIGNAL(triggered()), this, SLOT(setPlayer1Bot()));
@@ -78,6 +93,15 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *withdraw = new QAction("withdraw", this);
     connect(withdraw, SIGNAL(triggered()), this, SLOT(withdraw()));
     gameMenu->addAction(withdraw);
+    QAction *setDeep5 = new QAction("5", this);
+    connect(setDeep5, SIGNAL(triggered()), this, SLOT(setDeep5()));
+    Deep->addAction(setDeep5);
+    QAction *setDeep7 = new QAction("7", this);
+    connect(setDeep7, SIGNAL(triggered()), this, SLOT(setDeep7()));
+    Deep->addAction(setDeep7);
+    QAction *setDeep9 = new QAction("9", this);
+    connect(setDeep9, SIGNAL(triggered()), this, SLOT(setDeep9()));
+    Deep->addAction(setDeep9);
     Board *board = new Board;
     Player *player1 = new Player(Player1type, 1, board);
     Player *player2 = new Player(Player2type, -1, board);

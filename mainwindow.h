@@ -24,6 +24,9 @@ private slots:
   void setPlayer2Bot();
   void setPlayer1Human();
   void setPlayer2Human();
+  void setDeep5();
+  void setDeep7();
+  void setDeep9();
   void withdraw();
 private:
   Game *game;

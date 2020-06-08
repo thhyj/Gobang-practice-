@@ -246,7 +246,7 @@ int Player::calc(int color) {
 
 int zong = 0;
 int ti, tj;
-const int depth = 9;
+extern int Depth;
 const int width = 10;
 struct Choice {
     int ti, tj;
@@ -386,16 +386,16 @@ double Player:: evaluatePoint(int ti, int tj) {
     return tot;
 }
 int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
-    if(dep != depth && table.find(hash) != table.end() && table[hash].second <= dep) {
+    if(dep != Depth && table.find(hash) != table.end() && table[hash].second <= dep) {
        return table[hash].first;
     }
     int type = col == 1 ? 1 : 0;
-    if (dep != depth &&totalScore[type] >= 50000) {
-            return 0x3f3f3f3f - 1000 - (depth - dep);
+    if (dep != Depth &&totalScore[type] >= 50000) {
+            return 0x3f3f3f3f - 1000 - (Depth - dep);
         }
-     if (dep != depth &&totalScore[type ^ 1] >= 50000) {
+     if (dep != Depth &&totalScore[type ^ 1] >= 50000) {
 
-           return -0x3f3f3f3f - 1000 - (depth - dep);
+           return -0x3f3f3f3f - 1000 - (Depth - dep);
        }
 
     if(dep == 0) {
@@ -441,18 +441,18 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
             updateScore(i, j, 1);
             updateScore(i, j, -1);
             hash ^= zob[type][i][j];
-            if(val >= beta && dep != depth) {
+            if(val >= beta && dep != Depth) {
 
                 return beta;
             }
             if(val > alpha) {
                 alpha = val;
-                if(dep == depth) {
+                if(dep == Depth) {
                      ti = i;
                      tj = j;
                 }
             }
-            if(dep == depth && ti ==0 && tj == 0) {
+            if(dep == Depth && ti ==0 && tj == 0) {
                 ti = i;
                 tj = j;
             }
@@ -480,7 +480,7 @@ std::pair<int, int> Player::moveByAi() {
     int inf = 0x3f3f3f3f;
     zong = 0;
     ti = 0, tj = 0;
-    this->AlphaBeta(depth, -inf, inf, color);
+    this->AlphaBeta(Depth, -inf, inf, color);
     qDebug()<<"zong = "<<zong <<'\n';
     return std::pair<int, int>{ti, tj};
 }

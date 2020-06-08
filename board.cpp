@@ -1,14 +1,19 @@
 #include "board.h"
 #include <string.h>
+extern unsigned long long zob[2][15][15];
+extern unsigned long long hash;
 Board::Board() {
     memset(map, 0, sizeof(map));
 }
 
 int Board::getStatus(int x, int y) {
+    if(x < 0 || y < 0 || x >= kBoardSizeNum || y >= kBoardSizeNum) return 0;
     return map[x][y];
 }
 void Board::setStatus(int x, int y, int v){
     map[x][y] = v;
+   // int type = v == 1 ? 1 : 0;
+   // hash ^= zob[type][x][y];
     return;
 }
 //八个方向，由于对称性，可以只定义四个方向

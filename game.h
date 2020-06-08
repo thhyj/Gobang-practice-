@@ -2,6 +2,7 @@
 #define GAME_H
 #include "board.h"
 #include "player.h"
+#include <vector>
 
 class Game {
 private:
@@ -12,10 +13,12 @@ public:
     Game();
     ~Game();
     Game(Board* board, Player* player1, Player* player2);
+    std::vector<std::pair<int, int>> history;
     int getStatus(int x, int y); //获取位置x,y的棋子状态
     void setStatus(int x, int y, int v); //将位置x,y的棋子状态设置为v
     int checkWin(int y, int x);
     Player* getPlayer();//获取当前的player
+    void setPlayer(int num, int type);
     void init();
 };
 

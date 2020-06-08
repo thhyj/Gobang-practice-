@@ -3,7 +3,7 @@
 const int kBoardSizeNum = 15; // 棋盘的长和宽
 class Board {
 private:
-    int map[kBoardSizeNum + 1][kBoardSizeNum + 1];//表示棋盘上的棋子状态,-1为白旗，1为黑棋，0为无
+    int map[kBoardSizeNum][kBoardSizeNum];//表示棋盘上的棋子状态,-1为白旗，1为黑棋，0为无
 
 public:
     Board();

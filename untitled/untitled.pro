@@ -1,6 +1,6 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2020-06-04T18:14:11
+# Project created by QtCreator 2020-06-07T18:23:19
 #
 #-------------------------------------------------
 
@@ -8,7 +8,7 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = wuziqi
+TARGET = untitled
 TEMPLATE = app
 
 # The following define makes your compiler emit warnings if you use
@@ -25,25 +25,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++11
 
 SOURCES += \
-        board.cpp \
-        game.cpp \
         main.cpp \
-        mainwindow.cpp \
-        player.cpp
+        mainwindow.cpp
 
 HEADERS += \
-        board.h \
-        game.h \
-        mainwindow.h \
-        player.h
+        mainwindow.h
 
 FORMS += \
         mainwindow.ui
-QMAKE_CXXFLAGS_RELEASE += -O3
-QT       += multimedia
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-

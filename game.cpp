@@ -1,5 +1,10 @@
 #include "game.h"
-
+#include<QDebug>
+#include<QMessageBox>
+#include <utility>
+#include <QMediaPlayer>
+#include <thread>
+int lastx, lasty;
 Game::Game() {
     board = new Board;
     player[0] = new Player;
@@ -18,9 +23,19 @@ int Game::getStatus(int x, int y) {
 
     return board->getStatus(x, y);
 }
+void playSound() {
+    qDebug()<<"233";
+    system("play /home/thhyj/wuziqi/d.mp3");
+}
 void Game::setStatus(int x, int y, int v){
     now ^=1;
     board->setStatus(x, y, v);
+    lastx = x;
+    lasty = y;
+    if(v != 0){
+        history.push_back(std::make_pair(x, y));
+        playSound();
+    }
     return;
 }
 Player* Game::getPlayer() {
@@ -33,4 +48,8 @@ int Game::checkWin(int y, int x) {
 void Game:: init() {
     delete board;
     board = new Board;
+    history.clear();
+}
+void Game::setPlayer(int num, int type) {
+    player[num]->setType(type);
 }

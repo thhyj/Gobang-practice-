@@ -19,6 +19,7 @@ struct trie {
     int totscore;
 } tr[605];
 int tot;
+int inihash;
 inline void build(std::string s, int score) { //先建出一课Trie树
     int len = s.size(), temp, now = 0;
     for (int i = 0; i < len; ++i) {
@@ -88,7 +89,9 @@ inline void trieInit(){
             }
         }
         hash = rand64();
+        inihash = hash;
     }
+    hash = inihash;
 }
 inline int getScore(std::string s) {        //对于一个字符串，通过AC自动机获取它的分数
     int now = 0, temp;
@@ -243,7 +246,7 @@ int Player::calc(int color) {
 
 int zong = 0;
 int ti, tj;
-const int depth = 7;
+const int depth = 9;
 const int width = 10;
 struct Choice {
     int ti, tj;

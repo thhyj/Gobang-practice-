@@ -40,7 +40,6 @@ HEADERS += \
 FORMS += \
         mainwindow.ui
 QMAKE_CXXFLAGS_RELEASE += -O3
-QT       += multimedia
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

@@ -6,6 +6,9 @@
 #include <unordered_map>
 #include <QDebug>
 #include <algorithm>
+#include <mutex>
+#include "omp.h"
+#include <thread>
 unsigned long long rand64() {
     return rand() ^ ((unsigned long long)rand() << 15) ^ ((unsigned long long)rand() << 30) ^ ((unsigned long long)rand() << 45) ^ ((unsigned long long)rand() << 60);
 }
@@ -17,69 +20,110 @@ struct trie {
     bool cnt;
     int score;
     int totscore;
-} tr[605];
-int tot;
-int inihash;
-inline void build(std::string s, int score) { //先建出一课Trie树
-    int len = s.size(), temp, now = 0;
-    for (int i = 0; i < len; ++i) {
-        temp = s[i] - '0';
-        if (!tr[now].son[temp]) {
-            tr[now].son[temp] = ++tot;
-        }
-        now = tr[now].son[temp];
-    }
-    tr[now].cnt = 1;
-    tr[now].score = score;
-}
-inline void getfail() {                //在Trie树上把Fail链给建出来，这就变成了一个AC自动机
-    static std::queue<int> que;
+};
 
-    for (int i = 0; i < 2; ++i) {
-        if (tr[0].son[i]) que.push(tr[0].son[i]);
+struct ACAutomaton {
+    trie tr[605];
+    int tot = 0;
+    inline void build(std::string s, int score) { //先建出一课Trie树
+        int len = s.size(), temp, now = 0;
+        for (int i = 0; i < len; ++i) {
+            temp = s[i] - '0';
+            if (!tr[now].son[temp]) {
+                tr[now].son[temp] = ++tot;
+            }
+            now = tr[now].son[temp];
+        }
+        tr[now].cnt = 1;
+        tr[now].score = score;
     }
-    int u, v;
-    while (!que.empty()) {
-        u = que.front();
-        que.pop();
+    inline void getfail() {                //在Trie树上把Fail链给建出来，这就变成了一个AC自动机
+        std::queue<int> que;
+
         for (int i = 0; i < 2; ++i) {
-            v = tr[u].fail;
-            if ((!tr[v].son[i]) && v) v = tr[v].fail;
-            if (tr[u].son[i]) {
-                tr[tr[u].son[i]].fail = tr[v].son[i];
-                tr[tr[u].son[i]].cnt |= tr[tr[v].son[i]].cnt;
-                que.push(tr[u].son[i]);
-            } else {
-                tr[u].son[i] = tr[v].son[i];
+            if (tr[0].son[i]) que.push(tr[0].son[i]);
+        }
+        int u, v;
+        while (!que.empty()) {
+            u = que.front();
+            que.pop();
+            for (int i = 0; i < 2; ++i) {
+                v = tr[u].fail;
+                if ((!tr[v].son[i]) && v) v = tr[v].fail;
+                if (tr[u].son[i]) {
+                    tr[tr[u].son[i]].fail = tr[v].son[i];
+                    tr[tr[u].son[i]].cnt |= tr[tr[v].son[i]].cnt;
+                    que.push(tr[u].son[i]);
+                } else {
+                    tr[u].son[i] = tr[v].son[i];
+                }
             }
         }
     }
-}
-inline void trieInit(){
-    if(tot > 0) return;
-    build("11111", 50000);
-    build("011110", 4320);
-    build("011100", 720);
-    build("001110", 720);
-    build("011010", 720);
-    build("010110", 720);
-    build("11110", 720);
-    build("01111", 720);
-    build("11011", 720);
-    build("10111", 720);
-    build("11101", 720);
-    build("001100", 120);
-    build("001010", 120);
-    build("010100", 120);
-    build("000100", 20);
-    build("001000", 20);
-    getfail();
+    inline void trieInit(){
+        if(tot > 0) return;
+        for(int i = 0; i < 605; ++i) {
+            tr[i].son[0] = tr[i].son[1] = 0;
+            tr[i].fail = 0;
+            tr[i].score = 0;
+            tr[i].totscore = 0;
+            tr[i].cnt = 0;
+        }
+        build("11111", 50000);
+        build("011110", 4320);
+        build("011100", 720);
+        build("001110", 720);
+        build("011010", 720);
+        build("010110", 720);
+        build("11110", 720);
+        build("01111", 720);
+        build("11011", 720);
+        build("10111", 720);
+        build("11101", 720);
+        build("001100", 120);
+        build("001010", 120);
+        build("010100", 120);
+        build("000100", 20);
+        build("001000", 20);
+        getfail();
+
+    }
+    std::mutex Mutex;
+    inline int getScore(std::string s) {        //对于一个字符串，通过AC自动机获取它的分数
+        //Mutex.lock();
+        int now = 0;
+        int totscore = 0;
+        now = 0;
+        for (int i = 0; i < s.size(); ++i) {
+            if(s[i] == '2') {
+                now = 0;
+                continue;
+            }
+            if(!tr[now].son[s[i] - '0']) now = tr[now].fail;
+            now = tr[now].son[s[i] - '0'];
+            totscore += tr[now].totscore;
+
+        }
+        //Mutex.unlock();
+        return totscore;
+    }
+}ac[4];
+
+int inihash;
+
+Player::Player(int type, int color, Board *board):type(type),color(color), board(board) {
+    for(int i = 0; i < 4; ++i) {
+        ac[i].trieInit();
+    }
+
     if(!hash) {
-        for(int now  = 0; now <= tot; ++now) {
-            int temp = now;
-            while(temp) {
-                tr[now].totscore += tr[temp].score;
-                temp = tr[temp].fail;
+        for(int T = 0; T < 4; ++T) {
+            for(int now  = 0; now <= ac[T].tot; ++now) {
+                int temp = now;
+                while(temp) {
+                    ac[T].tr[now].totscore += ac[T].tr[temp].score;
+                    temp = ac[T].tr[temp].fail;
+                }
             }
         }
         for(int i = 0; i < kBoardSizeNum; ++i ){
@@ -92,23 +136,6 @@ inline void trieInit(){
         inihash = hash;
     }
     hash = inihash;
-}
-inline int getScore(std::string s) {        //对于一个字符串，通过AC自动机获取它的分数
-    int now = 0, temp;
-    int totscore = 0;
-    for (int i = 0; i < s.size(); ++i) {
-        if(s[i] == '2') {
-            now = 0;
-            continue;
-        }
-        if(!tr[now].son[s[i] - '0']) now = tr[now].fail;
-        now = tr[now].son[s[i] - '0'];
-        totscore += tr[now].totscore;
-    }
-    return totscore;
-}
-Player::Player(int type, int color, Board *board):type(type),color(color), board(board) {
-    trieInit();
 }
 int Player::getType(){
     return type;
@@ -130,6 +157,7 @@ int Player::move(int x, int y) {
 
 int totalScore[2];
 int hang[2][15], lie[2][15], youxie[2][30], zuoxie[2][30];
+//单线程
 void Player::updateScore(int ti, int tj, int col) {
     std::string s;
     int type = col == 1 ? 1 : 0;
@@ -139,7 +167,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
     }
-    hang[type][ti] = getScore(s);
+    hang[type][ti] = ac[0].getScore(s);
     totalScore[type] += hang[type][ti];
     s.clear();
     totalScore[type] -= lie[type][tj];
@@ -148,7 +176,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
     }
-    lie[type][tj] = getScore(s);
+    lie[type][tj] = ac[0].getScore(s);
     totalScore[type] += lie[type][tj];
     s.clear();
     totalScore[type] -= youxie[type][tj - ti + kBoardSizeNum];
@@ -158,7 +186,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        youxie[type][tj - ti + kBoardSizeNum] = getScore(s);
+        youxie[type][tj - ti + kBoardSizeNum] = ac[0].getScore(s);
         totalScore[type] += youxie[type][tj - ti + kBoardSizeNum];
         s.clear();
     } else {
@@ -167,7 +195,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        youxie[type][tj - ti + kBoardSizeNum] = getScore(s);
+        youxie[type][tj - ti + kBoardSizeNum] = ac[0].getScore(s);
         totalScore[type] += youxie[type][tj - ti + kBoardSizeNum];
         s.clear();
     }
@@ -178,14 +206,14 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        zuoxie[type][tj + ti] = getScore(s);
+        zuoxie[type][tj + ti] = ac[0].getScore(s);
         totalScore[type] += zuoxie[type][tj + ti];
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
             s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        zuoxie[type][tj + ti] = getScore(s);
+        zuoxie[type][tj + ti] = ac[0].getScore(s);
         totalScore[type] += zuoxie[type][tj + ti];
         s.clear();
     }
@@ -203,14 +231,14 @@ int Player::calc(int color) {
         for (int j = 0; j < kBoardSizeNum; ++j) {
             s += ma[i][j] == color ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        totalScore += getScore(s);
+        totalScore += ac[0].getScore(s);
         s.clear();
     }
     for (int j = 0; j < kBoardSizeNum; ++j) {//计算每一列的分数
         for (int i = 0; i < kBoardSizeNum; ++i) {
             s += ma[i][j] == color ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        totalScore += getScore(s);
+        totalScore += ac[0].getScore(s);
         s.clear();
     }
     //以下都是计算斜行的分数
@@ -219,26 +247,26 @@ int Player::calc(int color) {
         for(int t = 0; t + j < kBoardSizeNum; ++t) {
             s += ma[i + t][j + t] == color ? '1' : ma[i + t][j + t] ? '2' : '0';
         }
-        totalScore += getScore(s);
+        totalScore += ac[0].getScore(s);
         s.clear();
         for(int t = 0; j - t >= 0; ++t) {
             s += ma[i + t][j - t] == color ? '1' : ma[i + t][j - t] ? '2' : '0';
         }
-        totalScore += getScore(s);
+        totalScore += ac[0].getScore(s);
         s.clear();
     }
     for(int i = 1, j = 0; i < kBoardSizeNum; ++i) {
         for(int t = 0; t + i < kBoardSizeNum; ++t) {
             s += ma[i + t][j + t] == color ? '1' : ma[i + t][j + t] ? '2' : '0';
         }
-        totalScore += getScore(s);
+        totalScore += ac[0].getScore(s);
         s.clear();
     }
     for(int i = 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i) {
         for(int t = 0; t + i < kBoardSizeNum; ++t) {
             s += ma[i + t][j - t] == color ? '1' : ma[i + t][j - t] ? '2' : '0';
         }
-        totalScore += getScore(s);
+        totalScore += ac[0].getScore(s);
         s.clear();
     }
     return totalScore;
@@ -258,133 +286,276 @@ struct Choice {
             return score > rhs.score;
         }
 };
-std::priority_queue<Choice>heap;
+std::priority_queue<Choice>heap[4], totHeap;
 inline bool cmp(const Choice &a, const Choice &b) {
     return a.score > b.score;
 }
-int Player::predict(int col) {
-    int type = col == 1 ? 1 : 0;
-    int score = -0x3f3f3f3f;
-    for(int i = 0; i < kBoardSizeNum; ++i) {
-        for(int j = 0; j < kBoardSizeNum; ++j) {
-            if(!ma[i][j]) {
-                ma[i][j] = col;
-                updateScore(i, j, 1);
-                updateScore(i, j, -1);
-                score = std::max(score, totalScore[type] - totalScore[type ^ 1]);
-                ma[i][j] = 0;
-                updateScore(i, j, 1);
-                updateScore(i, j, -1);
-            }
-        }
-    }
-    return  -score;
-}
 
-double Player:: evaluatePoint(int ti, int tj) {
+long long totalTime = 0;
+double Player:: evaluatePoint(int ti, int tj, int T) {
     std::string s;
     int col = 1;
-    ma[ti][tj] = col;
-    if(ma[ti][tj] != col) {
+    mp[T][ti][tj] = col;
+    if(mp[T][ti][tj] != col) {
         qDebug()<<"fuck you !!!!!" << '\n';
     }
     int type = col == 1 ? 1 : 0;
     double  tot = 0;
-    for (int i = ti, j = std::max(0, tj - 5); j < std::min(kBoardSizeNum, tj + 6); ++j) {
-        s += char(ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0');  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
-    }
-    tot += getScore(s);
+ //   #pragma omp parallel
+
+    {
+        std::thread evaluateThread[12];
+     //   evaluateThread[0] = std::thread([&](){
+            for (int i = ti, j = std::max(0, tj - 5); j < std::min(kBoardSizeNum, tj + 6); ++j) {
+                s += char(mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0');  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            }
+            tot += ac[T].getScore(s);
+     //   });
+
     s.clear();
-    for (int i = std::max(0, ti - 5), j = tj; i < std::min(kBoardSizeNum, ti + 6); ++i) {
-        s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+     //   evaluateThread[1] = std::thread([&](){
+            for (int i = std::max(0, ti - 5), j = tj; i < std::min(kBoardSizeNum, ti + 6); ++i) {
+                s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            }
+            tot += ac[T].getScore(s);
+      //  });
 
-
-    }
-    tot += getScore(s);
     s.clear();
     if(ti < tj) {
         for(int i = 0, j = tj - ti; j < kBoardSizeNum; ++j, ++i) {
-            s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
         }
-        tot += getScore(s);
+        tot += ac[T].getScore(s);
         s.clear();
     } else {
         for(int j = 0, i = ti - tj; i < kBoardSizeNum; ++i, ++j) {
-            s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
         }
-        tot += getScore(s);
+        tot += ac[T].getScore(s);
         s.clear();
     }
     if(ti + tj < kBoardSizeNum) {
         for(int i = 0, j = ti + tj; j > 0; --j, ++i) {
-            s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
         }
-        tot += getScore(s);;
+        tot += ac[T].getScore(s);;
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
-            s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        tot += getScore(s);
+        tot += ac[T].getScore(s);
         s.clear();
     }
     col = -1;
-    ma[ti][tj] = col;
+    mp[T][ti][tj] = col;
     type = col == 1 ? 1 : 0;
     for (int i = ti, j = std::max(0, tj - 5); j < std::min(kBoardSizeNum, tj + 6); ++j) {
-        s += char(ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0');  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+        s += char(mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0');  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
     }
-    tot += getScore(s);
+    tot += ac[T].getScore(s);
     s.clear();
     for (int i = std::max(0, ti - 5), j = tj; i < std::min(kBoardSizeNum, ti + 6); ++i) {
-        s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+        s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
     }
-    tot += getScore(s);
+    tot += ac[T].getScore(s);
     s.clear();
     if(ti < tj) {
         for(int i = 0, j = tj - ti; j < kBoardSizeNum; ++j, ++i) {
-            s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
         }
-        tot += getScore(s);
+        tot += ac[T].getScore(s);
         s.clear();
     } else {
         for(int j = 0, i = ti - tj; i < kBoardSizeNum; ++i, ++j) {
-            s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
         }
-        tot += getScore(s);
+        tot += ac[T].getScore(s);
         s.clear();
     }
     if(ti + tj < kBoardSizeNum) {
         for(int i = 0, j = ti + tj; j > 0; --j, ++i) {
-            s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
         }
-        tot += getScore(s);;
+        tot += ac[T].getScore(s);;
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
-            s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
+            s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        tot += getScore(s);
+        tot += ac[T].getScore(s);
         s.clear();
     }
-    ma[ti][tj] = 0;
+
+  //  for(int i = 0; i < 2; ++i) {
+ //       evaluateThread[i].join();
+ //   }
+    }
+    mp[T][ti][tj] = 0;
     tot -= ((double)(ti - 7) * (ti - 7) + (tj - 7) * (tj - 7)) / 100;
+   // qDebug()<<"ti = " << ti << "tj = " << tj << "tot = " << tot;
     return tot;
 }
+
+int cengshu = 0;
+
+std::mutex heapMutex;
+
+void Player::evaluate() {
+    double score;
+    int T = 0;
+    for(int i = 0; i < kBoardSizeNum; ++ i) {
+        for(int j = 0; j < kBoardSizeNum; ++j) {
+            if(!mp[T][i][j]) {
+                score = evaluatePoint(i, j, T);
+                heapMutex.lock();
+                if(heap[T].size()< width) {
+                    heap[T].push(Choice(i, j, score));
+                } else
+                if(score > heap[T].top().score) {
+                    heap[T].pop();
+                    heap[T].push(Choice(i, j, score));
+                }
+                heapMutex.unlock();
+            }
+        }
+    }
+}
+
+void Player::evaluate1() {
+    int border = kBoardSizeNum / 2;
+    double score;
+    int T = 0;
+
+    while(!heap[T].empty()) {
+        heap[T].pop();
+    }
+    for(int i = 0; i < border; ++ i) {
+        for(int j = 0; j < border; ++j) {
+            if(!ma[i][j]) {
+                score = evaluatePoint(i, j, T);
+            //    heapMutex.lock();
+
+
+                if(heap[T].size()< width) {
+                    heap[T].push(Choice(i, j, score));
+                } else
+                if(score > heap[T].top().score) {
+                    heap[T].pop();
+                    heap[T].push(Choice(i, j, score));
+                }
+              //  heapMutex.unlock();
+            }
+        }
+    }
+
+}
+
+void Player::evaluate2() {
+    int border = kBoardSizeNum / 2;
+    double score;
+    int T = 1;
+
+    while(!heap[T].empty()) {
+        heap[T].pop();
+    }
+    for(int i = 0; i < border; ++ i) {
+        for(int j = border; j < kBoardSizeNum; ++j) {
+            if(!ma[i][j]) {
+                score = evaluatePoint(i, j, T);
+             //   heapMutex.lock();
+
+
+                if(heap[T].size()< width) {
+                    heap[T].push(Choice(i, j, score));
+                } else
+                if(score > heap[T].top().score) {
+                    heap[T].pop();
+                    heap[T].push(Choice(i, j, score));
+                }
+              //  heapMutex.unlock();
+            }
+        }
+    }
+
+}
+
+void Player::evaluate3() {
+    int border = kBoardSizeNum / 2;
+    double score;
+    int T = 2;
+
+    while(!heap[T].empty()) {
+        heap[T].pop();
+    }
+    for(int i = border; i < kBoardSizeNum; ++ i) {
+        for(int j = 0; j < border; ++j) {
+            if(!ma[i][j]) {
+                score = evaluatePoint(i, j, T);
+              //  heapMutex.lock();
+
+
+                if(heap[T].size()< width) {
+                    heap[T].push(Choice(i, j, score));
+                } else
+                if(score > heap[T].top().score) {
+                    heap[T].pop();
+                    heap[T].push(Choice(i, j, score));
+                }
+             //   heapMutex.unlock();
+            }
+        }
+    }
+
+}
+
+void Player::evaluate4() {
+    int border = kBoardSizeNum / 2;
+    double score;
+    int T = 3;
+    while(!heap[T].empty()) {
+        heap[T].pop();
+    }
+    for(int i = border; i < kBoardSizeNum; ++ i) {
+        for(int j = border; j < kBoardSizeNum; ++j) {
+            if(!ma[i][j]) {
+
+                score = evaluatePoint(i, j, T);
+         //       qDebug() << "i = " << i << " j = " << j << " score = " << score <<'\n';
+            //    heapMutex.lock();
+
+                if(heap[T].size()< width) {
+                    heap[T].push(Choice(i, j, score));
+                } else
+                if(score > heap[T].top().score) {
+                    heap[T].pop();
+                    heap[T].push(Choice(i, j, score));
+                }
+             //   heapMutex.unlock();
+            }
+        }
+    }
+
+}
+
+inline void Player::update(int i, int j, int col) {
+    mp[0][i][j] = mp[1][i][j] = mp[2][i][j] = mp[3][i][j] = ma[i][j] = col;
+}
+
 int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
     if(dep != Depth && table.find(hash) != table.end() && table[hash].second <= dep) {
        return table[hash].first;
@@ -405,8 +576,10 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
     }
     int val;
     int tot = 0;
-    double score;
-    for(int i = 0; i < kBoardSizeNum; ++i) {
+  // double score;
+    int st = clock();
+
+  /*  for(int i = 0; i < kBoardSizeNum; ++i) {
         for(int j = 0; j < kBoardSizeNum; ++j) {
             if(!ma[i][j]) {
                 score = evaluatePoint(i, j);
@@ -419,17 +592,47 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
                 }
                 }
             }
-        }
-    Choice choice[width + 1];
-    while(heap.size()) {
-        choice[++tot] = heap.top();
-        heap.pop();
+        }*/
+  //  std::thread evaluateThread(&Player::evaluate, this);
+    std::thread evaluateThread[4];
+    evaluateThread[0] = std::thread (&Player::evaluate1, this);
+    evaluateThread[1] = std::thread (&Player::evaluate2, this);
+    evaluateThread[2] = std::thread (&Player::evaluate3, this);
+    evaluateThread[3] = std::thread (&Player::evaluate4, this);
+    for(int o = 0; o < 4; ++o) {
+        evaluateThread[o].join();
     }
+    //evaluateThread.join();
+    totalTime += clock() - st;
+    ++cengshu;
+ //   qDebug() <<cengshu<<" "<< totalTime << '\n';
+    Choice choice[width + 1];
+    for(int T = 0; T < 4; ++T) {
+        while(!heap[T].empty()) {
+         //   qDebug() << "heap["<<T<<"].top = " << heap[T].top().ti << " " << heap[T].top().tj << " " << heap[T].top().score << '\n';
+            if(totHeap.size() < width) {
+                totHeap.push(heap[T].top());
+            } else {
+                if(totHeap.top().score < heap[T].top().score) {
+                    totHeap.pop();
+                    totHeap.push(heap[T].top());
+                }
+            }
+            heap[T].pop();
+        }
+    }
+    while(totHeap.size()) {
+        choice[++tot] = totHeap.top();
+        totHeap.pop();
+    }
+   /* for(int o = tot; o >= 1; --o) {
+        qDebug() <<cengshu<< " choice[" << o << "] = " << choice[o].score << " " << choice[o].ti << " " << choice[o].tj;
+    }*/
     for(int o = tot; o >= 1; --o) {
         int i = choice[o].ti;
         int j = choice[o].tj;
         if(!ma[i][j]) {
-            ma[i][j] = col;
+            update(i, j, col);
             hash ^= zob[type][i][j];
             updateScore(i, j, 1);
             updateScore(i, j, -1);
@@ -437,7 +640,7 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
             if(table.find(hash) == table.end() || table[hash].second >= dep) {
                 table[hash] = std::make_pair(val, dep);
             }
-            ma[i][j] = 0;
+            update(i, j, 0);
             updateScore(i, j, 1);
             updateScore(i, j, -1);
             hash ^= zob[type][i][j];
@@ -468,13 +671,15 @@ std::pair<int, int> Player::moveByAi() {
     totalScore[1] = totalScore[0] = 0;
     for (int i = 0; i < kBoardSizeNum; ++i) {
         for (int j = 0; j < kBoardSizeNum; ++j) {
-            ma[i][j] = board->getStatus(i, j);
+            update(i, j, board->getStatus(i, j));
             if(ma[i][j]) {
                 updateScore(i, j, 1);
                 updateScore(i, j, -1);
             }
+
         }
     }
+
   //  qDebug()<<"calc" << calc(color) << "total" << totalScore[color == 1 ? 1 : 0]<<'\n';
   //  qDebug()<<"calc" << calc(-color) << "total" << totalScore[color == 1 ? 0 : 1]<<'\n';
     int inf = 0x3f3f3f3f;

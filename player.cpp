@@ -107,22 +107,20 @@ struct ACAutomaton {
         //Mutex.unlock();
         return totscore;
     }
-}ac[4];
+}ac;
 
 int inihash;
 
 Player::Player(int type, int color, Board *board):type(type),color(color), board(board) {
-    for(int i = 0; i < 4; ++i) {
-        ac[i].trieInit();
-    }
+        ac.trieInit();
 
     if(!hash) {
         for(int T = 0; T < 4; ++T) {
-            for(int now  = 0; now <= ac[T].tot; ++now) {
+            for(int now  = 0; now <= ac.tot; ++now) {
                 int temp = now;
                 while(temp) {
-                    ac[T].tr[now].totscore += ac[T].tr[temp].score;
-                    temp = ac[T].tr[temp].fail;
+                    ac.tr[now].totscore += ac.tr[temp].score;
+                    temp = ac.tr[temp].fail;
                 }
             }
         }
@@ -167,7 +165,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
     }
-    hang[type][ti] = ac[0].getScore(s);
+    hang[type][ti] = ac.getScore(s);
     totalScore[type] += hang[type][ti];
     s.clear();
     totalScore[type] -= lie[type][tj];
@@ -176,7 +174,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
     }
-    lie[type][tj] = ac[0].getScore(s);
+    lie[type][tj] = ac.getScore(s);
     totalScore[type] += lie[type][tj];
     s.clear();
     totalScore[type] -= youxie[type][tj - ti + kBoardSizeNum];
@@ -186,7 +184,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        youxie[type][tj - ti + kBoardSizeNum] = ac[0].getScore(s);
+        youxie[type][tj - ti + kBoardSizeNum] = ac.getScore(s);
         totalScore[type] += youxie[type][tj - ti + kBoardSizeNum];
         s.clear();
     } else {
@@ -195,7 +193,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        youxie[type][tj - ti + kBoardSizeNum] = ac[0].getScore(s);
+        youxie[type][tj - ti + kBoardSizeNum] = ac.getScore(s);
         totalScore[type] += youxie[type][tj - ti + kBoardSizeNum];
         s.clear();
     }
@@ -206,14 +204,14 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        zuoxie[type][tj + ti] = ac[0].getScore(s);
+        zuoxie[type][tj + ti] = ac.getScore(s);
         totalScore[type] += zuoxie[type][tj + ti];
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
             s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        zuoxie[type][tj + ti] = ac[0].getScore(s);
+        zuoxie[type][tj + ti] = ac.getScore(s);
         totalScore[type] += zuoxie[type][tj + ti];
         s.clear();
     }
@@ -231,14 +229,14 @@ int Player::calc(int color) {
         for (int j = 0; j < kBoardSizeNum; ++j) {
             s += ma[i][j] == color ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     for (int j = 0; j < kBoardSizeNum; ++j) {//计算每一列的分数
         for (int i = 0; i < kBoardSizeNum; ++i) {
             s += ma[i][j] == color ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     //以下都是计算斜行的分数
@@ -247,26 +245,26 @@ int Player::calc(int color) {
         for(int t = 0; t + j < kBoardSizeNum; ++t) {
             s += ma[i + t][j + t] == color ? '1' : ma[i + t][j + t] ? '2' : '0';
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
         for(int t = 0; j - t >= 0; ++t) {
             s += ma[i + t][j - t] == color ? '1' : ma[i + t][j - t] ? '2' : '0';
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     for(int i = 1, j = 0; i < kBoardSizeNum; ++i) {
         for(int t = 0; t + i < kBoardSizeNum; ++t) {
             s += ma[i + t][j + t] == color ? '1' : ma[i + t][j + t] ? '2' : '0';
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     for(int i = 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i) {
         for(int t = 0; t + i < kBoardSizeNum; ++t) {
             s += ma[i + t][j - t] == color ? '1' : ma[i + t][j - t] ? '2' : '0';
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     return totalScore;
@@ -309,7 +307,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
             for (int i = ti, j = std::max(0, tj - 5); j < std::min(kBoardSizeNum, tj + 6); ++j) {
                 s += char(mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0');  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
             }
-            tot += ac[T].getScore(s);
+            tot += ac.getScore(s);
      //   });
 
     s.clear();
@@ -317,7 +315,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
             for (int i = std::max(0, ti - 5), j = tj; i < std::min(kBoardSizeNum, ti + 6); ++i) {
                 s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
             }
-            tot += ac[T].getScore(s);
+            tot += ac.getScore(s);
       //  });
 
     s.clear();
@@ -327,7 +325,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     } else {
         for(int j = 0, i = ti - tj; i < kBoardSizeNum; ++i, ++j) {
@@ -335,7 +333,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     }
     if(ti + tj < kBoardSizeNum) {
@@ -344,13 +342,13 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);;
+        tot += ac.getScore(s);;
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
             s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     }
     col = -1;
@@ -359,14 +357,14 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
     for (int i = ti, j = std::max(0, tj - 5); j < std::min(kBoardSizeNum, tj + 6); ++j) {
         s += char(mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0');  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
     }
-    tot += ac[T].getScore(s);
+    tot += ac.getScore(s);
     s.clear();
     for (int i = std::max(0, ti - 5), j = tj; i < std::min(kBoardSizeNum, ti + 6); ++i) {
         s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
     }
-    tot += ac[T].getScore(s);
+    tot += ac.getScore(s);
     s.clear();
     if(ti < tj) {
         for(int i = 0, j = tj - ti; j < kBoardSizeNum; ++j, ++i) {
@@ -374,7 +372,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     } else {
         for(int j = 0, i = ti - tj; i < kBoardSizeNum; ++i, ++j) {
@@ -382,7 +380,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     }
     if(ti + tj < kBoardSizeNum) {
@@ -391,13 +389,13 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);;
+        tot += ac.getScore(s);;
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
             s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     }
 

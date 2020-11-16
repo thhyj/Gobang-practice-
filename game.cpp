@@ -2,7 +2,6 @@
 #include<QDebug>
 #include<QMessageBox>
 #include <utility>
-#include <QMediaPlayer>
 #include <thread>
 int lastx, lasty;
 Game::Game() {

@@ -2,14 +2,12 @@
 #include<QDebug>
 #include<QMessageBox>
 #include <utility>
-#include <QMediaPlayer>
 #include <thread>
 #include <QPushButton>
 #include <QMenuBar>
 #include <QMenu>
 #include <QPainter>
 #include <QTimer>
-#include <QSound>
 #include <unistd.h>
 #include <QMainWindow>
 #include <qmainwindow.h>

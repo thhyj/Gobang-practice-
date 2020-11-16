@@ -16,6 +16,7 @@ unsigned long long rand64() {
  std::unordered_map<unsigned long long, std::pair<int, int>>table;
  unsigned long long zob[2][15][15];
  unsigned long long hash;
+ std::vector<std::pair<int, int>>luozi;
  std::threadpool executor{4};
 struct trie {
     int son[2], fail;
@@ -559,10 +560,13 @@ inline void Player::update(int i, int j, int col) {
 }
 std::function<void()>eva[4];
 int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
-    if(dep != Depth && table.find(hash) != table.end() && table[hash].second <= dep) {
-       return table[hash].first;
-    }
-    int type = col == 1 ? 1 : 0;
+ //   bool pd = 0;
+  /*  if(dep != Depth && table.find(hash + beta * 31 + alpha * 31 * 31) != table.end() && table[hash + beta * 31 + alpha * 31 * 31].second >= dep) {
+       return table[hash + beta * 31 + alpha * 31 * 31].first;
+   //     pd = 1;
+    }*/
+    int type = (col == 1 ? 1 : 0);
+   // qDebug() << "type == " <<type << '\n';
     if (dep != Depth &&totalScore[type] >= 50000) {
             return 0x3f3f3f3f - 1000 - (Depth - dep);
         }
@@ -579,7 +583,7 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
     int val;
     int tot = 0;
   // double score;
-    int st = clock();
+ //   int st = clock();
 
   /*  for(int i = 0; i < kBoardSizeNum; ++i) {
         for(int j = 0; j < kBoardSizeNum; ++j) {
@@ -612,8 +616,8 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
         evaret[o].get();
     }
     //evaluateThread.join();
-    totalTime += clock() - st;
-    ++cengshu;
+   // totalTime += clock() - st;
+  //  ++cengshu;
     //qDebug() <<cengshu<<" "<< totalTime << '\n';
     Choice choice[width + 1];
     for(int T = 0; T < 4; ++T) {
@@ -645,16 +649,17 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
             hash ^= zob[type][i][j];
             updateScore(i, j, 1);
             updateScore(i, j, -1);
+         //   luozi.emplace_back(std::make_pair(i, j));
             val = -AlphaBeta(dep - 1, -beta, -alpha, -col);
-            if(table.find(hash) == table.end() || table[hash].second >= dep) {
-                table[hash] = std::make_pair(val, dep);
-            }
+         //   luozi.pop_back();
             update(i, j, 0);
             updateScore(i, j, 1);
             updateScore(i, j, -1);
             hash ^= zob[type][i][j];
             if(val >= beta && dep != Depth) {
-
+           /*     if(table.find(hash + beta * 31 + alpha * 31 * 31) == table.end() || table[hash + beta * 31 + alpha * 31 * 31].second < dep) {
+                    table[hash + beta * 31 + alpha * 31 * 31] = std::make_pair(beta, dep);
+                }*/
                 return beta;
             }
             if(val > alpha) {
@@ -670,6 +675,18 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
             }
         }
     }
+  /*  if(pd) {
+        qDebug() << "dep = " << dep <<  " table[hash].first = " << table[hash].first << '\n' << " table[hash].second = " << table[hash].second << '\n';
+
+        qDebug() <<"alpha = " << alpha <<"beta = "<< beta <<" hash = " <<hash << "落子\n";
+       for(auto a : luozi ){
+           qDebug() << "("<< a.first << " " << a.second << ") ";
+       }
+       qDebug() << '\n';
+    }*/
+  /*  if(table.find(hash + beta * 31 + alpha * 31 * 31) == table.end() || table[hash + beta * 31 + alpha * 31 * 31].second < dep) {
+        table[hash + beta * 31 + alpha * 31 * 31] = std::make_pair(alpha, dep);
+    }*/
     return alpha;
 }
 std::pair<int, int> Player::moveByAi() {

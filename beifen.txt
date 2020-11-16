@@ -16,6 +16,8 @@ unsigned long long rand64() {
  std::unordered_map<unsigned long long, std::pair<int, int>>table;
  unsigned long long zob[2][15][15];
  unsigned long long hash;
+ int ma[kBoardSizeNum + 1][kBoardSizeNum + 1] = {0};
+ int mp[4][kBoardSizeNum + 1][kBoardSizeNum + 1] = {0};
  std::threadpool executor{4};
 struct trie {
     int son[2], fail;
@@ -109,22 +111,20 @@ struct ACAutomaton {
         //Mutex.unlock();
         return totscore;
     }
-}ac[4];
+}ac;
 
 int inihash;
 
 Player::Player(int type, int color, Board *board):type(type),color(color), board(board) {
-    for(int i = 0; i < 4; ++i) {
-        ac[i].trieInit();
-    }
+        ac.trieInit();
 
     if(!hash) {
         for(int T = 0; T < 4; ++T) {
-            for(int now  = 0; now <= ac[T].tot; ++now) {
+            for(int now  = 0; now <= ac.tot; ++now) {
                 int temp = now;
                 while(temp) {
-                    ac[T].tr[now].totscore += ac[T].tr[temp].score;
-                    temp = ac[T].tr[temp].fail;
+                    ac.tr[now].totscore += ac.tr[temp].score;
+                    temp = ac.tr[temp].fail;
                 }
             }
         }
@@ -169,7 +169,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
     }
-    hang[type][ti] = ac[0].getScore(s);
+    hang[type][ti] = ac.getScore(s);
     totalScore[type] += hang[type][ti];
     s.clear();
     totalScore[type] -= lie[type][tj];
@@ -178,7 +178,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
     }
-    lie[type][tj] = ac[0].getScore(s);
+    lie[type][tj] = ac.getScore(s);
     totalScore[type] += lie[type][tj];
     s.clear();
     totalScore[type] -= youxie[type][tj - ti + kBoardSizeNum];
@@ -188,7 +188,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        youxie[type][tj - ti + kBoardSizeNum] = ac[0].getScore(s);
+        youxie[type][tj - ti + kBoardSizeNum] = ac.getScore(s);
         totalScore[type] += youxie[type][tj - ti + kBoardSizeNum];
         s.clear();
     } else {
@@ -197,7 +197,7 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        youxie[type][tj - ti + kBoardSizeNum] = ac[0].getScore(s);
+        youxie[type][tj - ti + kBoardSizeNum] = ac.getScore(s);
         totalScore[type] += youxie[type][tj - ti + kBoardSizeNum];
         s.clear();
     }
@@ -208,14 +208,14 @@ void Player::updateScore(int ti, int tj, int col) {
 
 
         }
-        zuoxie[type][tj + ti] = ac[0].getScore(s);
+        zuoxie[type][tj + ti] = ac.getScore(s);
         totalScore[type] += zuoxie[type][tj + ti];
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
             s += ma[i][j] == col ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        zuoxie[type][tj + ti] = ac[0].getScore(s);
+        zuoxie[type][tj + ti] = ac.getScore(s);
         totalScore[type] += zuoxie[type][tj + ti];
         s.clear();
     }
@@ -233,14 +233,14 @@ int Player::calc(int color) {
         for (int j = 0; j < kBoardSizeNum; ++j) {
             s += ma[i][j] == color ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     for (int j = 0; j < kBoardSizeNum; ++j) {//计算每一列的分数
         for (int i = 0; i < kBoardSizeNum; ++i) {
             s += ma[i][j] == color ? '1' : ma[i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     //以下都是计算斜行的分数
@@ -249,26 +249,26 @@ int Player::calc(int color) {
         for(int t = 0; t + j < kBoardSizeNum; ++t) {
             s += ma[i + t][j + t] == color ? '1' : ma[i + t][j + t] ? '2' : '0';
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
         for(int t = 0; j - t >= 0; ++t) {
             s += ma[i + t][j - t] == color ? '1' : ma[i + t][j - t] ? '2' : '0';
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     for(int i = 1, j = 0; i < kBoardSizeNum; ++i) {
         for(int t = 0; t + i < kBoardSizeNum; ++t) {
             s += ma[i + t][j + t] == color ? '1' : ma[i + t][j + t] ? '2' : '0';
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     for(int i = 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i) {
         for(int t = 0; t + i < kBoardSizeNum; ++t) {
             s += ma[i + t][j - t] == color ? '1' : ma[i + t][j - t] ? '2' : '0';
         }
-        totalScore += ac[0].getScore(s);
+        totalScore += ac.getScore(s);
         s.clear();
     }
     return totalScore;
@@ -294,7 +294,7 @@ inline bool cmp(const Choice &a, const Choice &b) {
 }
 
 long long totalTime = 0;
-double Player:: evaluatePoint(int ti, int tj, int T) {
+double evaluatePoint(int ti, int tj, int T) {
     std::string s;
     int col = 1;
     mp[T][ti][tj] = col;
@@ -311,7 +311,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
             for (int i = ti, j = std::max(0, tj - 5); j < std::min(kBoardSizeNum, tj + 6); ++j) {
                 s += char(mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0');  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
             }
-            tot += ac[T].getScore(s);
+            tot += ac.getScore(s);
      //   });
 
     s.clear();
@@ -319,7 +319,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
             for (int i = std::max(0, ti - 5), j = tj; i < std::min(kBoardSizeNum, ti + 6); ++i) {
                 s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
             }
-            tot += ac[T].getScore(s);
+            tot += ac.getScore(s);
       //  });
 
     s.clear();
@@ -329,7 +329,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     } else {
         for(int j = 0, i = ti - tj; i < kBoardSizeNum; ++i, ++j) {
@@ -337,7 +337,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     }
     if(ti + tj < kBoardSizeNum) {
@@ -346,13 +346,13 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);;
+        tot += ac.getScore(s);;
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
             s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     }
     col = -1;
@@ -361,14 +361,14 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
     for (int i = ti, j = std::max(0, tj - 5); j < std::min(kBoardSizeNum, tj + 6); ++j) {
         s += char(mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0');  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
     }
-    tot += ac[T].getScore(s);
+    tot += ac.getScore(s);
     s.clear();
     for (int i = std::max(0, ti - 5), j = tj; i < std::min(kBoardSizeNum, ti + 6); ++i) {
         s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
 
 
     }
-    tot += ac[T].getScore(s);
+    tot += ac.getScore(s);
     s.clear();
     if(ti < tj) {
         for(int i = 0, j = tj - ti; j < kBoardSizeNum; ++j, ++i) {
@@ -376,7 +376,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     } else {
         for(int j = 0, i = ti - tj; i < kBoardSizeNum; ++i, ++j) {
@@ -384,7 +384,7 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     }
     if(ti + tj < kBoardSizeNum) {
@@ -393,13 +393,13 @@ double Player:: evaluatePoint(int ti, int tj, int T) {
 
 
         }
-        tot += ac[T].getScore(s);;
+        tot += ac.getScore(s);;
         s.clear();
     } else {
         for(int i = ti + tj - kBoardSizeNum + 1, j = kBoardSizeNum - 1; i < kBoardSizeNum; ++i, --j) {
             s += mp[T][i][j] == col ? '1' : mp[T][i][j] ? '2' : '0';  //如果是自己的棋子，就为1，如果为空就为0，如果是敌方的棋子，就为2
         }
-        tot += ac[T].getScore(s);
+        tot += ac.getScore(s);
         s.clear();
     }
 
@@ -438,7 +438,7 @@ void Player::evaluate() {
     }
 }
 
-void Player::evaluate1() {
+void evaluate1(Player *that) {
     int border = kBoardSizeNum / 2;
     double score;
     int T = 0;
@@ -467,7 +467,7 @@ void Player::evaluate1() {
 
 }
 
-void Player::evaluate2() {
+void evaluate2(Player *that) {
     int border = kBoardSizeNum / 2;
     double score;
     int T = 1;
@@ -496,7 +496,7 @@ void Player::evaluate2() {
 
 }
 
-void Player::evaluate3() {
+void evaluate3(Player *that) {
     int border = kBoardSizeNum / 2;
     double score;
     int T = 2;
@@ -525,7 +525,7 @@ void Player::evaluate3() {
 
 }
 
-void Player::evaluate4() {
+void evaluate4(Player *that) {
     int border = kBoardSizeNum / 2;
     double score;
     int T = 3;
@@ -557,7 +557,7 @@ void Player::evaluate4() {
 inline void Player::update(int i, int j, int col) {
     mp[0][i][j] = mp[1][i][j] = mp[2][i][j] = mp[3][i][j] = ma[i][j] = col;
 }
-std::function<void()>eva[4];
+
 int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
     if(dep != Depth && table.find(hash) != table.end() && table[hash].second <= dep) {
        return table[hash].first;
@@ -596,25 +596,26 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
             }
         }*/
   //  std::thread evaluateThread(&Player::evaluate, this);
- /*   std::thread evaluateThread[4];
-    evaluateThread[0] = std::thread (&Player::evaluate1, this);
-    evaluateThread[1] = std::thread (&Player::evaluate2, this);
-    evaluateThread[2] = std::thread (&Player::evaluate3, this);
-    evaluateThread[3] = std::thread (&Player::evaluate4, this);
+  /*  std::future<void>eval1 = executor.commit(evaluate1, this);
+    std::future<void>eval2 = executor.commit(evaluate2, this);
+    std::future<void>eval3 = executor.commit(evaluate3, this);
+    std::future<void>eval4 = executor.commit(evaluate4, this);
+    eval1.get();
+    eval2.get();
+    eval3.get();
+    eval4.get();*/
+    std::thread evaluateThread[4];
+    evaluateThread[0] = std::thread (evaluate1, this);
+    evaluateThread[1] = std::thread (evaluate2, this);
+    evaluateThread[2] = std::thread (evaluate3, this);
+    evaluateThread[3] = std::thread (evaluate4, this);
     for(int o = 0; o < 4; ++o) {
         evaluateThread[o].join();
-    }*/
-    std::future<void> evaret[4];
-    for(int o = 0; o < 4; ++o) {
-        evaret[o] = executor.commit(eva[o]);
-    }
-    for(int o = 0; o < 4; ++o) {
-        evaret[o].get();
     }
     //evaluateThread.join();
     totalTime += clock() - st;
     ++cengshu;
-    //qDebug() <<cengshu<<" "<< totalTime << '\n';
+ //   qDebug() <<cengshu<<" "<< totalTime << '\n';
     Choice choice[width + 1];
     for(int T = 0; T < 4; ++T) {
         while(!heap[T].empty()) {
@@ -634,9 +635,9 @@ int Player::AlphaBeta(int dep, int alpha, int beta, int col) {
         choice[++tot] = totHeap.top();
         totHeap.pop();
     }
- /*   for(int o = tot; o >= 1; --o) {
+    for(int o = tot; o >= 1; --o) {
         qDebug() <<cengshu<< " choice[" << o << "] = " << choice[o].score << " " << choice[o].ti << " " << choice[o].tj;
-    }*/
+    }
     for(int o = tot; o >= 1; --o) {
         int i = choice[o].ti;
         int j = choice[o].tj;
@@ -694,11 +695,6 @@ std::pair<int, int> Player::moveByAi() {
     int inf = 0x3f3f3f3f;
     zong = 0;
     ti = 0, tj = 0;
-    eva[0] = std::bind(&Player::evaluate1, this);
-    eva[1] = std::bind(&Player::evaluate2, this);
-    eva[2] = std::bind(&Player::evaluate3, this);
-    eva[3] = std::bind(&Player::evaluate4, this);
-
     this->AlphaBeta(Depth, -inf, inf, color);
     qDebug()<<"zong = "<<zong <<'\n';
     return std::pair<int, int>{ti, tj};

@@ -35,7 +35,8 @@ HEADERS += \
         board.h \
         game.h \
         mainwindow.h \
-        player.h
+        player.h \
+        threadpool.h
 
 FORMS += \
         mainwindow.ui
